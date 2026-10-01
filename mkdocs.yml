@@ -1,0 +1,35 @@
+site_name: SEC Submissions
+site_description: Evidence-based processing of SEC EDGAR submissions timestamps
+site_url: https://iangow.github.io/sec_submissions/
+repo_url: https://github.com/iangow/sec_submissions
+repo_name: iangow/sec_submissions
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+
+nav:
+  - Overview: index.md
+  - Update workflow: workflow.md
+  - Python API: api.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            members_order: source
+            show_root_heading: true
+            show_source: false
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true

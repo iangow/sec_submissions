@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sec-submissions"
+version = "0.1.0"
+description = "Evidence-based processing of SEC EDGAR submissions timestamps"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [{ name = "Ian D. Gow" }]
+keywords = ["SEC", "EDGAR", "submissions", "Parquet", "timestamps"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+  "duckdb>=1.4,<2",
+  "pyarrow>=20",
+  "pytz>=2024.1",
+]
+
+[project.optional-dependencies]
+audit = ["scipy>=1.14"]
+docs = [
+  "mkdocs-material>=9.6",
+  "mkdocstrings[python]>=0.29",
+]
+dev = ["pytest>=8", "ruff>=0.11"]
+
+[project.scripts]
+sec-submissions = "sec_submissions.cli:main"
+
+[project.urls]
+Homepage = "https://iangow.github.io/sec_submissions/"
+Repository = "https://github.com/iangow/sec_submissions"
+Issues = "https://github.com/iangow/sec_submissions/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sec_submissions"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
