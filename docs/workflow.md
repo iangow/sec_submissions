@@ -35,14 +35,15 @@ override it.
 
 ```sh
 sec-submissions download data/submissions-2026-10-01.zip
-sec-submissions extract data/submissions-2026-10-01.zip data/filings_raw_2026-10-01.parquet
+sec-submissions extract data/submissions-2026-10-01.zip data/2026-10-01/filings_raw.parquet
 ```
 
 Downloads are immutable: choose a new filename for each snapshot. Extraction
 checkpoints automatically after about 150 seconds. Repeat the same command to
 resume, or use `--max-seconds 0` to let extraction finish in one run. Companion
 tables such as `companies.parquet` and `former_names.parquet` are written beside
-the filings output. Their date fields are Parquet dates; the raw
+the filings output, so use a separate extraction directory for each snapshot.
+Their date fields are Parquet dates; the raw
 `acceptanceDateTime` remains text.
 
 ## First update from the 2024 archive
@@ -52,12 +53,12 @@ Readers can use `sec-submissions fetch-reference` and proceed directly to
 
 The original snapshot's consistently New York-local clocks provide a useful
 bootstrap, but this is a one-time historical reference, not a rule for new
-snapshots. Extract the 2024 archive as `filings_raw_2024.parquet`, then create
+snapshots. Extract the 2024 archive into `data/2024/filings_raw.parquet`, then create
 the explicitly labelled reference:
 
 ```sh
 sec-submissions reference \
-  --raw data/filings_raw_2024.parquet \
+  --raw data/2024/filings_raw.parquet \
   --output data/filings_previous.parquet
 ```
 
@@ -65,7 +66,7 @@ Process the new snapshot to create a baseline candidate:
 
 ```sh
 sec-submissions process \
-  --raw data/filings_raw_2026-10-01.parquet \
+  --raw data/2026-10-01/filings_raw.parquet \
   --previous data/filings_previous.parquet \
   --output data/filings_candidate_01.parquet
 ```
@@ -88,7 +89,7 @@ and settings.
 ```sh
 sec-submissions collect-live-json \
   --filings data/filings_candidate_01.parquet \
-  --raw data/filings_raw_2026-10-01.parquet \
+  --raw data/2026-10-01/filings_raw.parquet \
   --output data/evidence/live-json \
   --since-date 2024-01-01 \
   --sample-blocks 200 \
@@ -127,7 +128,7 @@ Use a fresh output path for each iteration:
 
 ```sh
 sec-submissions process \
-  --raw data/filings_raw_2026-10-01.parquet \
+  --raw data/2026-10-01/filings_raw.parquet \
   --previous data/filings_previous.parquet \
   --output data/filings_candidate_02.parquet \
   --live-observations data/evidence/live-json/live_json_timestamp_observations.parquet \
