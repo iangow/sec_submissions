@@ -6,9 +6,35 @@ from unittest.mock import patch
 import duckdb
 
 from sec_submissions import audit, publish
+from sec_submissions.publish_filings import main as publish_main
 
 
 class AuditPublishTests(unittest.TestCase):
+    def test_publish_cli_uses_the_overridden_data_root(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            snapshot = root / "submissions/snapshots/example"
+            snapshot.mkdir(parents=True)
+            with duckdb.connect() as con:
+                con.execute("COPY (SELECT 'raw' acceptanceDateTime) TO ? (FORMAT PARQUET)",
+                            [str(snapshot / "filings_raw.parquet")])
+                con.execute("COPY (SELECT now() acceptanceDateTime) TO ? (FORMAT PARQUET)",
+                            [str(snapshot / "filings_candidate_0001.parquet")])
+            with patch("sys.argv", ["publish", "--data-dir", str(root)]):
+                publish_main()
+            self.assertTrue((root / "submissions/filings.parquet").is_file())
+
+    def test_publish_can_install_a_first_local_release(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            candidate, current = root / "candidate.parquet", root / "submissions/filings.parquet"
+            with duckdb.connect() as con:
+                con.execute("COPY (SELECT now() acceptanceDateTime) TO ? (FORMAT PARQUET)", [str(candidate)])
+            rows, archived = publish(candidate, data_dir=root)
+            self.assertEqual((rows, archived), (1, None))
+            self.assertEqual(current.read_bytes(), candidate.read_bytes())
+            self.assertFalse(current.with_name("filings_previous.parquet").exists())
+
     def test_cached_audit_reports_errors_without_mutating_predictions(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

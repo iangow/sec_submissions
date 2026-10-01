@@ -131,12 +131,14 @@ def collect_sgml(queue, output, workers=8, rate=5, max_attempts=2,
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--queue", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--data-dir", type=Path)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--rate", type=float, default=5, help="Maximum total SEC requests per second")
     parser.add_argument("--max-attempts", type=int, default=2)
     parser.add_argument("--user-agent", help="Defaults to SEC_USER_AGENT")
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
-    collect_sgml(args.queue, args.output, args.workers, args.rate,
-                 args.max_attempts, args.user_agent, args.resume)
+    from .workflow import collect_sgml as collect_with_defaults
+    collect_with_defaults(args.queue, args.output, args.workers, args.rate,
+                          args.max_attempts, args.user_agent, args.resume,args.data_dir)

@@ -13,6 +13,8 @@ from pathlib import Path
 import time
 import zipfile
 
+from ._paths import DataPaths
+
 try:
     import resource
 except ImportError:  # Windows has no resource module.
@@ -140,7 +142,11 @@ def _to_parquet(stage, paths, state):
             output.with_suffix(".tmp.parquet").replace(output)
 
 
-def extract(zip_path: Path, out_path: Path, max_seconds=MAX_SECONDS):
+def extract(zip_path: Path | None = None, out_path: Path | None = None,
+            max_seconds=MAX_SECONDS, data_dir=None, raw_data_dir=None):
+    paths = DataPaths(data_dir, raw_data_dir)
+    zip_path = Path(zip_path) if zip_path is not None else paths.zip()
+    out_path = Path(out_path) if out_path is not None else paths.extracted(zip_path)
     zip_path, out_path = zip_path.expanduser().resolve(), out_path.expanduser().resolve()
     if out_path.name == "filings.parquet":
         raise ValueError("Use a separate output name; filings.parquet is protected.")
@@ -233,12 +239,14 @@ def extract(zip_path: Path, out_path: Path, max_seconds=MAX_SECONDS):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("zip", type=Path, help="SEC submissions ZIP snapshot")
-    parser.add_argument("output", type=Path, help="new filings_raw.parquet output path")
+    parser.add_argument("zip", type=Path, nargs="?", help="Default: latest local SEC ZIP")
+    parser.add_argument("output", type=Path, nargs="?", help="Default: matching DATA_DIR/submissions/snapshots folder")
+    parser.add_argument("--data-dir", type=Path)
+    parser.add_argument("--raw-data-dir", type=Path)
     parser.add_argument("--max-seconds", type=float, default=MAX_SECONDS,
                         help="Checkpoint and return after this many extraction seconds; 0 runs to completion.")
     args = parser.parse_args()
-    extract(args.zip, args.output, args.max_seconds)
+    extract(args.zip, args.output, args.max_seconds, args.data_dir, args.raw_data_dir)
 
 
 if __name__ == "__main__":

@@ -11,21 +11,23 @@ import zipfile
 import duckdb
 
 from .http import resolve_user_agent
+from ._paths import DataPaths
 
 URL = "https://www.sec.gov/Archives/edgar/daily-index/bulkdata/submissions.zip"
 
 
-def download_submissions(output: str | Path, user_agent: str | None = None) -> Path:
+def download_submissions(output: str | Path | None = None, user_agent: str | None = None,
+                         raw_data_dir=None) -> Path:
     """Download a new submissions ZIP and write a Parquet source manifest.
 
     Args:
-        output: New path for the ZIP. Existing snapshots are never overwritten.
+        output: New ZIP path; defaults to a dated file under RAW_DATA_DIR/submissions.
         user_agent: Identifying SEC User-Agent, usually ``Name email@example.org``.
 
     Returns:
         The path to the downloaded ZIP.
     """
-    output = Path(output).expanduser().resolve()
+    output = Path(output).expanduser().resolve() if output is not None else DataPaths(raw_data_dir=raw_data_dir).new_zip()
     user_agent = resolve_user_agent(user_agent)
     manifest = output.with_suffix(".manifest.parquet")
     partial = output.with_suffix(".partial.zip")
@@ -75,7 +77,8 @@ def download_submissions(output: str | Path, user_agent: str | None = None) -> P
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("output", type=Path)
+    parser.add_argument("output", type=Path, nargs="?")
+    parser.add_argument("--raw-data-dir", type=Path)
     parser.add_argument("--user-agent", help="SEC User-Agent; defaults to SEC_USER_AGENT")
     args = parser.parse_args()
-    download_submissions(args.output, args.user_agent)
+    download_submissions(args.output, args.user_agent, args.raw_data_dir)

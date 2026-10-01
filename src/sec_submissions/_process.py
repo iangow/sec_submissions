@@ -135,9 +135,10 @@ def process(raw, previous, output, cache=None, memory_limit='8GB', sgml_sources=
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--raw',type=Path,required=True)
-    parser.add_argument('--previous',type=Path,required=True)
-    parser.add_argument('--output',type=Path,required=True)
+    parser.add_argument('--raw',type=Path)
+    parser.add_argument('--previous',type=Path)
+    parser.add_argument('--output',type=Path)
+    parser.add_argument('--data-dir',type=Path)
     parser.add_argument('--cache-dir',type=Path,help='Parquet directory of live JSON and SGML observations.')
     parser.add_argument('--memory-limit',default='8GB')
     parser.add_argument('--sgml-observations',action='append',default=[],
@@ -157,9 +158,9 @@ def main():
         if not matches:
             raise FileNotFoundError(pattern)
         live_sources.extend(Path(p).resolve() for p in matches)
-    process(args.raw.expanduser().resolve(),args.previous.expanduser().resolve(),
-            args.output.expanduser().resolve(),None if args.cache_dir is None else args.cache_dir.expanduser().resolve(),
-            args.memory_limit,sorted(set(sources)),sorted(set(live_sources)))
+    from .workflow import process as process_with_defaults
+    process_with_defaults(args.raw,args.previous,args.output,args.cache_dir,
+                          args.memory_limit,sorted(set(sources)),sorted(set(live_sources)),args.data_dir)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,10 @@
 # Update workflow
 
+Commands have defaults based on `RAW_DATA_DIR` and `DATA_DIR`, loaded from the
+working directory's `.env` when present. Start with the [data and directory
+guide](data.md) to download the current reference and run an update without
+path arguments. The explicit paths below show how each stage fits together.
+
 Use separate, dated inputs and outputs. The processor never overwrites a
 candidate or its diagnostics. SEC collection commands require a contact-bearing
 user agent and save observations as Parquet, so a later run can reuse the same
@@ -30,7 +35,7 @@ override it.
 
 ```sh
 sec-submissions download data/submissions-2026-10-01.zip
-sec-submissions extract data/submissions-2026-10-01.zip data/filings_raw.parquet
+sec-submissions extract data/submissions-2026-10-01.zip data/filings_raw_2026-10-01.parquet
 ```
 
 Downloads are immutable: choose a new filename for each snapshot. Extraction
@@ -41,6 +46,9 @@ the filings output. Their date fields are Parquet dates; the raw
 `acceptanceDateTime` remains text.
 
 ## First update from the 2024 archive
+
+Readers can use `sec-submissions fetch-reference` and proceed directly to
+`process` instead of repeating this historical preparation.
 
 The original snapshot's consistently New York-local clocks provide a useful
 bootstrap, but this is a one-time historical reference, not a rule for new

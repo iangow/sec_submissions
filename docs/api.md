@@ -1,7 +1,16 @@
 # Python API
 
+::: sec_submissions.fetch_reference
+
+::: sec_submissions.ReferenceBundle
+
+::: sec_submissions.data_directory
+
+::: sec_submissions.raw_data_directory
+
 The command-line interface and Python functions share the same implementation.
-Functions accept local paths and never infer a personal data directory.
+Explicit paths override the documented directory defaults. Otherwise the
+functions use `DATA_DIR` and `RAW_DATA_DIR`, including values in the local `.env`.
 
 ## Core functions
 

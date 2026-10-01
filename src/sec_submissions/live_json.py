@@ -239,9 +239,10 @@ def collect_live_json(filings, raw, output, since_date=date(2024, 1, 1),
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--filings", type=Path, required=True, help="Unresolved candidate Parquet")
-    parser.add_argument("--raw", type=Path, required=True, help="Raw Parquet for the same ZIP snapshot")
-    parser.add_argument("--output", type=Path, required=True, help="New observation directory; use --resume to continue")
+    parser.add_argument("--filings", type=Path, help="Default: latest local candidate")
+    parser.add_argument("--raw", type=Path, help="Default: latest extracted snapshot")
+    parser.add_argument("--output", type=Path, help="Default: the snapshot's evidence/live-json folder")
+    parser.add_argument("--data-dir", type=Path)
     parser.add_argument("--since-date", type=date.fromisoformat, default=date(2024, 1, 1))
     parser.add_argument("--sample-blocks", type=int, help="Optional reproducible block sample; default collects all")
     parser.add_argument("--seed", type=int, default=20261001)
@@ -250,5 +251,6 @@ def main():
     parser.add_argument("--user-agent", help="Defaults to SEC_USER_AGENT")
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
-    collect_live_json(args.filings, args.raw, args.output, args.since_date, args.sample_blocks,
-                      args.seed, args.workers, args.rate, args.user_agent, args.resume)
+    from .workflow import collect_live_json as collect_with_defaults
+    collect_with_defaults(args.filings, args.raw, args.output, args.since_date, args.sample_blocks,
+                          args.seed, args.workers, args.rate, args.user_agent, args.resume,args.data_dir)

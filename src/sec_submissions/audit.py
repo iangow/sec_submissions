@@ -194,8 +194,9 @@ def audit(filings, output, sample_size=10_000, seed=20261001, cache=None,
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--filings", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--filings", type=Path)
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--data-dir", type=Path)
     parser.add_argument("--sample-size", type=int, default=10_000)
     parser.add_argument("--seed", type=int, default=20261001)
     parser.add_argument("--cache", type=Path, help="Optional SGML observation Parquet")
@@ -204,5 +205,6 @@ def main():
     parser.add_argument("--user-agent", help="Defaults to SEC_USER_AGENT")
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
-    audit(args.filings, args.output, args.sample_size, args.seed, args.cache,
-          args.workers, args.rate, args.user_agent, args.resume)
+    from .workflow import audit as audit_with_defaults
+    audit_with_defaults(args.filings, args.output, args.sample_size, args.seed, args.cache,
+                        args.workers, args.rate, args.user_agent, args.resume,args.data_dir)

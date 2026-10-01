@@ -1,13 +1,50 @@
 from pathlib import Path
+import hashlib
+import json
 import tempfile
 import unittest
 
 import duckdb
 
 from sec_submissions import make_previous, process
+from sec_submissions._paths import DataPaths
 
 
 class ProcessTests(unittest.TestCase):
+    def test_default_process_uses_downloaded_reference_and_its_sgml(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = DataPaths(directory)
+            folder = workspace.snapshots / "submissions-20261001"
+            folder.mkdir(parents=True)
+            raw = folder / "filings_raw.parquet"
+            reference = workspace.references / "2026-09-30"
+            reference.mkdir(parents=True)
+            previous = reference / "filings.parquet"
+            sgml = reference / "sgml_observations.parquet"
+            with duckdb.connect() as con:
+                con.execute("""COPY (SELECT 1 cik,'known' accessionNumber,'file.json' source_file,'10-K' form,
+                    TIMESTAMPTZ '2025-07-01 16:00:00+00' acceptanceDateTime,'sgml' timestamp_provenance)
+                    TO ? (FORMAT PARQUET)""", [str(previous)])
+                con.execute("""COPY (SELECT 1 cik,'new' accessionNumber,'file.json' source_file,'10-K' form,
+                    '2025-07-02T16:00:00Z' acceptanceDateTime) TO ? (FORMAT PARQUET)""", [str(raw)])
+                con.execute("""COPY (SELECT 'new' accession_number,TIMESTAMP '2025-07-02 12:00:00' acceptance_datetime,
+                    NULL::VARCHAR AS "error") TO ? (FORMAT PARQUET)""", [str(sgml)])
+            manifest = {"schema_version": 1, "version": "2026-09-30", "files": [
+                {"name": path.name, "role": role, "size_bytes": path.stat().st_size,
+                 "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+                for path, role in [(previous, "filings"), (sgml, "sgml")]]}
+            (reference / "manifest.json").write_text(json.dumps(manifest))
+            (workspace.references / "current.json").write_text(json.dumps({"version": "2026-09-30"}))
+            process(data_dir=directory, memory_limit="1GB")
+            candidate = workspace.candidate()
+            with duckdb.connect() as con:
+                con.execute("SET TimeZone='UTC'")
+                self.assertEqual(con.execute("SELECT hour(acceptanceDateTime),timestamp_provenance FROM read_parquet(?)",
+                                            [str(candidate)]).fetchone(), (16, "sgml"))
+            process(data_dir=directory, memory_limit="1GB")
+            self.assertNotEqual(workspace.candidate(), candidate)
+            self.assertTrue(candidate.is_file())
+
     def test_prior_instants_and_duplicate_pairs_produce_candidate(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -17,6 +17,8 @@ import zlib
 from datetime import datetime, timezone
 from pathlib import Path
 
+from dotenv import dotenv_values
+
 
 def _valid_user_agent(value) -> bool:
     return isinstance(value, str) and bool(value.strip()) and "@" in value
@@ -26,14 +28,7 @@ def _project_env_value() -> str | None:
     path = Path.cwd() / ".env"
     if not path.is_file():
         return None
-    for line in path.read_text().splitlines():
-        key, separator, value = line.partition("=")
-        if separator and key.strip() == "SEC_USER_AGENT":
-            value = value.strip()
-            if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-                value = value[1:-1]
-            return value
-    return None
+    return dotenv_values(path).get("SEC_USER_AGENT")
 
 
 def _user_config_value() -> str | None:

@@ -12,8 +12,14 @@ as unresolved; they are not silently promoted to evidence.
 
 ## Install
 
-The package has not yet been published to PyPI. From a local clone, install the
-development tools with:
+The package has not yet been published to PyPI. Install the current GitHub
+version with:
+
+```sh
+python -m pip install 'sec-submissions[audit] @ git+https://github.com/iangow/sec_submissions.git'
+```
+
+From a local clone, install the development tools with:
 
 ```sh
 python -m pip install -e '.[dev,docs,audit]'
@@ -29,6 +35,11 @@ The `audit` extra installs SciPy for the one-sided confidence bound. Core
 extraction and correction do not require it.
 
 ## Process outline
+
+Start with `sec-submissions fetch-reference` to download the current corrected
+Parquet, supporting observations, and audit results. The [data and directory
+guide](data.md) documents downloads, versions, `RAW_DATA_DIR`, `DATA_DIR`, and
+local `.env` configuration. Defaults work without configuring either directory.
 
 1. Download a dated `submissions.zip` and extract the JSON files into raw Parquet
    tables.
