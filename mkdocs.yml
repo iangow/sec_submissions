@@ -12,10 +12,15 @@ theme:
     - content.code.copy
 
 nav:
-  - Overview: index.md
-  - Data and directories: data.md
-  - Update workflow: workflow.md
-  - Python API: api.md
+  - Start here: index.md
+  - Get the data: data.md
+  - Audit results: audit.md
+  - Timestamp corrections: timestamps.md
+  - Advanced:
+      - Prepare an update: workflow.md
+      - Python API: api.md
+  - Maintainers:
+      - Data releases: releases.md
 
 plugins:
   - search
@@ -32,5 +37,12 @@ plugins:
 markdown_extensions:
   - admonition
   - tables
+  - pymdownx.superfences
+  - pymdownx.arithmatex:
+      generic: true
   - toc:
       permalink: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js

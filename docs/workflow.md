@@ -1,8 +1,14 @@
-# Update workflow
+# Prepare an update
+
+This workflow is for readers who want to create a new corrected snapshot.
+If you only need the published data, [download the release](data.md) and stop
+there. The [timestamp explanation](timestamps.md) describes the evidence and
+assumptions; the [audit page](audit.md) reports the assessment of the published
+September 30 release.
 
 Commands have defaults based on `RAW_DATA_DIR` and `DATA_DIR`, loaded from the
 working directory's `.env` when present. Start with the [data and directory
-guide](data.md) to download the current reference and run an update without
+guide](data.md) to download a reference and run an update without
 path arguments. The explicit paths below show how each stage fits together.
 
 Use separate, dated inputs and outputs. The processor never overwrites a
@@ -12,9 +18,7 @@ evidence without refetching it.
 
 ## SEC request identification
 
-`dera.pq` resolves SEC request identification from an explicit argument,
-`SEC_USER_AGENT`, then its general HTTP user-agent option, and prompts
-interactively if needed. `sec-submissions` follows that pattern: commands accept
+Commands accept
 `--user-agent`; otherwise they check `SEC_USER_AGENT`, `HTTP_USER_AGENT`, the
 current project's `.env`, and `~/.config/sec-submissions/config.toml`. A
 first-use terminal prompt asks for an identifying value containing an email
@@ -46,20 +50,14 @@ the filings output, so use a separate extraction directory for each snapshot.
 Their date fields are Parquet dates; the raw
 `acceptanceDateTime` remains text.
 
-## First update from the 2024 archive
+## Create an initial candidate
 
-Readers can use `sec-submissions fetch-reference` and proceed directly to
-`process` instead of repeating this historical preparation.
-
-The original snapshot's consistently New York-local clocks provide a useful
-bootstrap, but this is a one-time historical reference, not a rule for new
-snapshots. Extract the 2024 archive into `data/2024/filings_raw.parquet`, then create
-the explicitly labelled reference:
+Use the published corrected reference rather than repeating the historical
+2024 bootstrap. In this explicit-path example, first download it into a
+reference cache:
 
 ```sh
-sec-submissions reference \
-  --raw data/2024/filings_raw.parquet \
-  --output data/filings_previous.parquet
+sec-submissions fetch-reference --version 2026-09-30 --output data/references
 ```
 
 Process the new snapshot to create a baseline candidate:
@@ -67,14 +65,22 @@ Process the new snapshot to create a baseline candidate:
 ```sh
 sec-submissions process \
   --raw data/2026-10-01/filings_raw.parquet \
-  --previous data/filings_previous.parquet \
+  --previous data/references/2026-09-30/filings.parquet \
+  --sgml-observations data/references/2026-09-30/sgml_observations.parquet \
+  --live-observations data/references/2026-09-30/live_json_timestamp_observations.parquet \
   --output data/filings_candidate_01.parquet
 ```
 
 This compares current clocks with the previous corrected file and within-snapshot
 duplicate accession clocks. It also creates a `filings_candidate_01_checks/`
 directory containing diagnostics. The processor uses a temporary DuckDB
-database and removes it at the end.
+database and removes it at the end. Explicit `--previous` inputs require
+explicit observation paths if those observations are to be reused.
+
+With the default layout, the shorter `sec-submissions process` chooses the
+latest extracted raw file, uses the local current Parquet when present or the
+downloaded reference otherwise, and includes saved reference and collection
+observations. It never fetches new SEC evidence by itself.
 
 ## Collect live JSON evidence
 
@@ -129,8 +135,10 @@ Use a fresh output path for each iteration:
 ```sh
 sec-submissions process \
   --raw data/2026-10-01/filings_raw.parquet \
-  --previous data/filings_previous.parquet \
+  --previous data/references/2026-09-30/filings.parquet \
   --output data/filings_candidate_02.parquet \
+  --live-observations data/references/2026-09-30/live_json_timestamp_observations.parquet \
+  --sgml-observations data/references/2026-09-30/sgml_observations.parquet \
   --live-observations data/evidence/live-json/live_json_timestamp_observations.parquet \
   --sgml-observations data/evidence/sgml/sgml_observations.parquet
 ```
@@ -146,7 +154,11 @@ An audit freezes a random sample before fetching headers and never changes
 predictions. Its output includes the sample identifiers, row-level outcomes,
 unavailable cases, and a one-sided 95% upper error bound among verifiable rows.
 Missing tags and request failures are reported separately from timestamp
-disagreements. Install the `audit` extra to calculate the bound.
+disagreements. Install the `audit` extra to calculate the bound:
+
+```sh
+python -m pip install 'sec-submissions[audit] @ git+https://github.com/iangow/sec_submissions.git'
+```
 
 ```sh
 sec-submissions audit \
@@ -157,24 +169,12 @@ sec-submissions audit \
 ```
 
 Use `--resume` only with the same candidate, sample size, and seed. The sample
-identifier CSV is retained as a separate reproducibility artifact; the note
-should report the aggregate audit result, not a chronology of collection runs.
+identifier CSV is retained as a separate reproducibility artifact. Do not use
+the audit to repair the candidate and then report the same sample as an
+independent assessment. The [audit page](audit.md) explains the interpretation
+of unavailable cases and confidence bounds.
 
-## Publish a local release
-
-After reviewing the candidate and audit, the generic publisher can validate it
-and write the bytes into an existing local current-file path without replacing
-that path's inode. It first backs up the current release as the previous file,
-archives an older previous file if present, and restores the current bytes if a
-write fails. This operation is storage-agnostic and has no Dropbox-specific
-checks.
-
-```sh
-sec-submissions publish \
-  --candidate data/filings_candidate_02.parquet \
-  --current data/filings.parquet
-```
-
-Use the notes repository's separate release wrapper when you need Dropbox
-sync/link verification. The package itself does not access Dropbox or publish
-to PyPI.
+The candidate itself is ready to load into a Parquet reader after review; no
+publication command is required to analyse it. Local current-file installation
+and preparation of public GitHub data releases are described in the
+[maintainer notes](releases.md).

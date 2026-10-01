@@ -1,115 +1,141 @@
-# Data and local directories
+# Get the data
 
-The [public data repository](https://github.com/iangow/sec_submissions_data)
-provides dated releases of corrected filings, reusable timestamp observations,
-and audit results. The files are release assets; they are downloaded on demand
-and are not included in the Python package.
+The package downloads dated releases from the
+[public data repository](https://github.com/iangow/sec_submissions_data).
+The data files are not bundled into the Python package.
 
-## Start with the current reference
+## Download a release
+
+After [installing the package](index.md#get-the-data), run:
 
 ```sh
 sec-submissions fetch-reference
 ```
 
-This command downloads the current corrected `filings.parquet`, its SGML and
-live-JSON observations, source metadata, and audit artifacts. It prints the
-local reference path. No GitHub login or SEC user agent is needed. Existing
-verified downloads are reused; interrupted transfers resume automatically.
-Every file is checked against the release's size and SHA-256 checksum.
+This downloads the current corrected `filings.parquet`, supporting timestamp
+observations, source metadata, and audit artifacts. It prints the local file
+path. No GitHub login or SEC user agent is needed. Existing verified downloads
+are reused; interrupted transfers resume automatically. Every file is checked
+against the release's size and SHA-256 checksum.
 
 The current release is resolved once, and all file URLs are then pinned to
-that dated release. Files from two snapshots cannot be mixed by a release
-changing during the download. To reproduce a particular snapshot, use:
+that dated release. A new release appearing during the download cannot mix
+files from two snapshots. For an analysis that should remain reproducible,
+specify the version:
 
 ```sh
-sec-submissions fetch-reference --version 2026-09-30
+sec-submissions fetch-reference --version 2026-09-30 --companions
 ```
 
-Add `--companions` to download `companies.parquet`, `addresses.parquet`,
-`tickers.parquet`, `former_names.parquet`, and `files.parquet` as well. The
-manifest records the SEC source snapshot, supported and unresolved row counts,
-and the independent audit results. Unresolved timestamps remain explicitly
-labelled; a successful download does not make those rows verified.
+`--companions` adds the other five Parquet tables. You do not need to run the
+processor, collect SEC evidence, or publish a local candidate after downloading.
+The cached `filings.parquet` is ready for analysis, subject to the timestamp
+limitations described below.
 
-For analysis without the package, use the [current Parquet download](https://github.com/iangow/sec_submissions_data/releases/latest/download/filings.parquet)
-or the [September 30, 2026 version](https://github.com/iangow/sec_submissions_data/releases/download/2026-09-30/filings.parquet).
+## What is included?
 
-## Directory conventions
+| File | Contents |
+| --- | --- |
+| `filings.parquet` | Filing records, time-zone-aware acceptance timestamps, and timestamp provenance |
+| `companies.parquet` | Company metadata at the source snapshot |
+| `addresses.parquet` | Business and mailing addresses |
+| `tickers.parquet` | Tickers and exchanges at the source snapshot |
+| `former_names.parquet` | Former names and their date ranges |
+| `files.parquet` | References to historical filing files |
 
-The package follows the same repository-root convention as `dera.pq`:
+The last five files require `--companions`. The download also includes reusable
+SGML and live-JSON observations, source metadata, and the sample identifiers,
+row-level outcomes, and summary of the release's audit. The manifest records
+checksums, the SEC source snapshot, and supported and unresolved row counts.
 
-| Setting | Contents | Default when unset |
-| --- | --- | --- |
-| `RAW_DATA_DIR` | Original ZIP snapshots and download manifests | `~/sec-submissions-data/raw_data` |
-| `DATA_DIR` | Parquet tables, downloaded references, evidence, and audits | `~/sec-submissions-data/pq_data` |
+The data retain repeated appearances of an accession under different CIKs.
+Company details and ticker mappings describe the downloaded snapshot, not
+necessarily the company on each historical filing date. Date-only fields are
+Parquet dates; `acceptanceDateTime` is a time-zone-aware instant.
 
-Each root contains a `submissions/` subdirectory. Explicit path arguments take
-precedence. Otherwise the package loads the working directory's `.env`, while
-preserving any values already set in the process environment. For example:
+### Timestamp status
 
-```dotenv
-RAW_DATA_DIR=~/data/raw_data
-DATA_DIR=~/data/pq_data
-SEC_USER_AGENT="Your Name your.email@example.org"
+Use `timestamp_provenance`, `timestamp_interpretation`, and
+`timestamp_reference_id` to distinguish direct evidence, inferred conventions,
+and unsupported timestamps. Rows marked `unresolved_raw_as_eastern` retain a
+New York interpretation as a compatibility fallback; they are **not verified**.
+Other unresolved categories are also not confirmations.
+
+The [audit results](audit.md) describe what was checked for the September 30
+release and what remains uncertain. The [timestamp explanation](timestamps.md)
+describes the evidence behind each correction.
+
+## Use the files
+
+### R and DuckDB
+
+The command above stores the pinned release under
+`DATA_DIR/submissions/references/2026-09-30/`. With the default directories,
+load it using `farr::load_parquet()`:
+
+```r
+library(DBI)
+library(duckdb)
+library(farr)
+
+data_dir <- path.expand(Sys.getenv(
+  "DATA_DIR", unset = "~/sec-submissions-data/pq_data"
+))
+reference_dir <- file.path(data_dir, "submissions", "references", "2026-09-30")
+db <- dbConnect(duckdb())
+dbExecute(db, "SET TimeZone = 'America/New_York'")
+filings <- load_parquet(db, table = "filings", data_dir = reference_dir)
+tickers <- load_parquet(db, table = "tickers", data_dir = reference_dir)
 ```
 
-No `.env` is needed to use the default directories. To check the actual paths:
+If you configured `DATA_DIR` in a `.env`, load that setting in R too, for
+example with `readRenviron(".env")` before this code. Changing DuckDB's display
+time zone does not change the stored instants. The
+[dates-and-times note](https://iangow.github.io/notes/published/datetimes.html)
+uses these two tables for an extended R example.
+
+### Python
+
+```python
+from sec_submissions import fetch_reference
+
+reference = fetch_reference(version="2026-09-30", companions=True)
+print(reference.filings)
+print(reference.directory / "tickers.parquet")
+```
+
+Use these local paths with DuckDB, Arrow, or another Parquet reader. The
+function uses the same checked cache as the command-line interface.
+
+## Local directories
+
+No directory configuration is required. To check the resolved paths, run:
 
 ```sh
 sec-submissions paths
 ```
 
-Downloaded references are kept in
-`DATA_DIR/submissions/references/<release-version>/`. ZIP files are stored as
-`RAW_DATA_DIR/submissions/submissions-<retrieval-time>.zip`. Extracted tables,
-candidates, and diagnostics are kept together under
-`DATA_DIR/submissions/snapshots/<snapshot-name>/`. This keeps repeated updates
-separate and lets extraction resume against the same ZIP.
+| Setting | Contents | Default when unset |
+| --- | --- | --- |
+| `DATA_DIR` | Parquet tables, downloaded references, evidence, and audits | `~/sec-submissions-data/pq_data` |
+| `RAW_DATA_DIR` | Original ZIP snapshots and download manifests, when preparing an update | `~/sec-submissions-data/raw_data` |
 
-The CLI options `--data-dir` and `--raw-data-dir` override the corresponding
-roots. `fetch-reference --output` can also select a separate reference cache;
-use explicit processor inputs for a cache outside the configured `DATA_DIR`.
+Each root contains a `submissions/` subdirectory. Downloaded references are kept
+in `DATA_DIR/submissions/references/<release-version>/`.
 
-## Update with defaults
+To use existing data directories, set the roots in the working directory's
+`.env`:
 
-After fetching a reference, these commands choose the latest local inputs and
-create a fresh candidate on every processing run:
-
-```sh
-sec-submissions download
-sec-submissions extract --max-seconds 0
-sec-submissions process
+```dotenv
+DATA_DIR=~/data/pq_data
+RAW_DATA_DIR=~/data/raw_data
 ```
 
-SEC requests require an identifying user agent; the first terminal request
-prompts if it has not already been configured. Downloading the hosted
-reference does not contact the SEC.
+The package preserves values already set in the process environment. Explicit
+path arguments take precedence. `--data-dir` overrides the Parquet root, and
+`fetch-reference --output` selects a separate reference cache. Python functions
+also accept `data_dir`; `data_directory()` exposes the resolved root.
 
-`process` uses your local `DATA_DIR/submissions/filings.parquet` as the previous
-release when it exists. Otherwise it uses the downloaded reference. It also
-reuses the reference's observations and locally collected JSON/SGML evidence.
-Independent audit observations are not automatically reused to process the
-same candidate. Explicit `--previous`, `--cache-dir`, and observation paths
-remain available for controlled runs.
-
-The [update workflow](workflow.md) explains how to collect evidence for new
-coverage and audit a candidate. To inspect the latest candidate with a fresh
-sample, run `sec-submissions audit`; to install it after review, run
-`sec-submissions publish`. The first publication creates
-`DATA_DIR/submissions/filings.parquet`; later publications preserve the
-existing file's identity and archive the preceding releases.
-
-## Python
-
-```python
-from sec_submissions import fetch_reference, process
-
-reference = fetch_reference()
-print(reference.filings)
-
-# After downloading and extracting a new SEC snapshot:
-process()
-```
-
-Functions accept `data_dir` and, for ZIP operations, `raw_data_dir` overrides.
-`data_directory()` and `raw_data_directory()` expose the resolved roots.
+SEC identification is needed only when downloading a new SEC snapshot or
+collecting evidence, not when downloading the hosted release. Those operations
+are described in the [advanced update workflow](workflow.md).

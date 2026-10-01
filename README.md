@@ -1,45 +1,41 @@
 # SEC Submissions
 
-Python tools for downloading, extracting, correcting, auditing, and publishing
-SEC EDGAR submissions data. The raw `acceptanceDateTime` text is preserved;
-timestamp interpretations are evidence-based and retain provenance.
+Download SEC EDGAR submissions data as Parquet files for analysis in R, Python,
+or DuckDB. Acceptance timestamps are time-zone-aware and retain their evidence
+and unresolved status.
 
-The package is under active development and is not yet published to PyPI. The
-supported path starts with a `submissions.zip`, uses a preceding corrected
-Parquet release and saved live-JSON/SGML observations, then creates and audits
-a separate candidate. Nothing in the package updates a Dropbox-hosted file
-automatically.
+The package is under active development and is not yet published to PyPI.
+Readers can download an audited data release without processing the SEC's ZIP
+archive or collecting filing headers themselves.
 
 ## Install
 
 ```bash
-python -m pip install 'sec-submissions[audit] @ git+https://github.com/iangow/sec_submissions.git'
-```
-
-For local development:
-
-```bash
-python -m pip install -e '.[dev,docs,audit]'
+python -m pip install 'sec-submissions @ git+https://github.com/iangow/sec_submissions.git'
 ```
 
 The intended distribution name is `sec-submissions`; import it as
-`sec_submissions`. After a PyPI release, users can install the package with
-`python -m pip install 'sec-submissions[audit]'`.
+`sec_submissions`. Python 3.12 or later is required.
 
-## Workflow
+## Get the data
 
 ```bash
 sec-submissions fetch-reference
-sec-submissions download
-sec-submissions extract --max-seconds 0
-sec-submissions process
 ```
 
-`RAW_DATA_DIR` stores ZIP snapshots; `DATA_DIR` stores Parquet and supporting
-evidence. Both can be set in a local `.env`; defaults work when neither is set.
-Run `sec-submissions paths` to see the resolved directories. The downloadable
-[data releases](https://github.com/iangow/sec_submissions_data/releases) include
-checksums, timestamp provenance, and independent audit results.
+For a reproducible snapshot, including companion tables such as tickers:
 
-See the [documentation site](https://iangow.github.io/sec_submissions/) for
-installation, the update workflow, API reference, and audit interpretation.
+```bash
+sec-submissions fetch-reference --version 2026-09-30 --companions
+```
+
+Downloads are verified against release checksums and cached locally. No account,
+SEC user agent, or directory configuration is required. `DATA_DIR` can be set
+in a local `.env` to use an existing Parquet repository; otherwise the package
+uses `~/sec-submissions-data/pq_data`.
+
+The documentation is organized around
+[getting the data](https://iangow.github.io/sec_submissions/data/),
+[audit results and limitations](https://iangow.github.io/sec_submissions/audit/),
+and [how timestamps are fixed](https://iangow.github.io/sec_submissions/timestamps/).
+Advanced update commands and maintainer release instructions are separate.

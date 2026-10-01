@@ -22,13 +22,18 @@ functions use `DATA_DIR` and `RAW_DATA_DIR`, including values in the local `.env
 
 ::: sec_submissions.process
 
-## Evidence and release
+## Evidence and audit
 
 ::: sec_submissions.collect_live_json
 
 ::: sec_submissions.collect_sgml
 
 ::: sec_submissions.audit
+
+## Local candidate installation
+
+This function installs a local current file; it does not upload a GitHub
+release. See the [maintainer notes](releases.md#install-a-local-current-file).
 
 ::: sec_submissions.publish
 
